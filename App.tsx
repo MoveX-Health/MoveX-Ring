@@ -1,118 +1,72 @@
-/**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
- */
+import {View, Text, Button} from 'react-native';
+import React, {useEffect} from 'react';
+import {NativeModules} from 'react-native';
+import requestBluetoothPermissions from './src/utils/requestBluetoothPermissions';
+import {BleDeviceInfo} from './src/types/bleDeviceInfo';
 
-import React from 'react';
-import type {PropsWithChildren} from 'react';
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View,
-} from 'react-native';
+const {BleModule, BLEConnectionModule, ReadHealthDataModule} = NativeModules;
 
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions,
-} from 'react-native/Libraries/NewAppScreen';
+export default function App() {
+  const [device, setDevice] = React.useState<BleDeviceInfo | null>(null);
+  const handleScan = async () => {
+    await requestBluetoothPermissions();
+    await BleModule.startScan((res: BleDeviceInfo) => {
+      setDevice(res);
+      console.log('Scan Response', res.deviceName);
+    });
+  };
 
-type SectionProps = PropsWithChildren<{
-  title: string;
-}>;
+  const handleConnect = async () => {
+    await BLEConnectionModule.connect(device?.deviceMac, (res: string) => {
+      console.log('Connection Response', res);
+    });
+  };
 
-function Section({children, title}: SectionProps): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
+  const handleReadData = async () => {
+    console.log(ReadHealthDataModule.getHeartRateData);
+    await ReadHealthDataModule.getHeartRateData(async (res: JSON | string) => {
+      console.log(
+        'Read Data Response',
+        new Date(JSON.parse(res).data[0].heartStartTime).toString(),
+      );
+    });
+    // if (global.__fbBatchedBridge) {
+    //   const origMessageQueue = global.__fbBatchedBridge;
+    //   const modules = origMessageQueue._remoteModuleTable;
+    //   const methods = origMessageQueue._remoteMethodTable;
+    //   global.findModuleByModuleAndMethodIds = (moduleId, methodId) => {
+    //     console.log(
+    //       `The problematic line code is in: ${modules[moduleId]}.${methods[moduleId][methodId]}`,
+    //     );
+    //   };
+    // }
+    await ReadHealthDataModule.getHeartRateData(async (res: JSON | string) => {
+      console.log('Read Data Response', res);
+    });
+  };
+
+  useEffect(() => {
+    BleModule.initializeBle((res: string) => {
+      console.log('Initial Response', res);
+    });
+
+    console.log({NativeModules});
+  }, []);
+
   return (
-    <View style={styles.sectionContainer}>
-      <Text
-        style={[
-          styles.sectionTitle,
-          {
-            color: isDarkMode ? Colors.white : Colors.black,
-          },
-        ]}>
-        {title}
-      </Text>
-      <Text
-        style={[
-          styles.sectionDescription,
-          {
-            color: isDarkMode ? Colors.light : Colors.dark,
-          },
-        ]}>
-        {children}
-      </Text>
+    <View>
+      <Text>App</Text>
+      <Button title="Scan" onPress={handleScan} />
+      <Text>S</Text>
+
+      {device && (
+        <Button
+          title={`Connect ${device?.deviceName}`}
+          onPress={handleConnect}
+        />
+      )}
+      <Text>S</Text>
+      <Button title="Read Data" onPress={handleReadData} />
     </View>
   );
 }
-
-function App(): React.JSX.Element {
-  const isDarkMode = useColorScheme() === 'dark';
-
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter,
-  };
-
-  return (
-    <SafeAreaView style={backgroundStyle}>
-      <StatusBar
-        barStyle={isDarkMode ? 'light-content' : 'dark-content'}
-        backgroundColor={backgroundStyle.backgroundColor}
-      />
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        style={backgroundStyle}>
-        <Header />
-        <View
-          style={{
-            backgroundColor: isDarkMode ? Colors.black : Colors.white,
-          }}>
-          <Section title="Step One">
-            Edit <Text style={styles.highlight}>App.tsx</Text> to change this
-            screen and then come back to see your edits.
-          </Section>
-          <Section title="See Your Changes">
-            <ReloadInstructions />
-          </Section>
-          <Section title="Debug">
-            <DebugInstructions />
-          </Section>
-          <Section title="Learn More">
-            Read the docs to discover what to do next:
-          </Section>
-          <LearnMoreLinks />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-const styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24,
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: '600',
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: '400',
-  },
-  highlight: {
-    fontWeight: '700',
-  },
-});
-
-export default App;
